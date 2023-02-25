@@ -69,6 +69,12 @@ const config: HardhatUserConfig = {
       gasPrice: 35000000000,
       chainId: 43114,
       accounts: [account],
+      verify: {
+        etherscan: {
+          apiKey: process.env.API_KEY,
+          apiUrl: 'https://api.snowtrace.io/',
+        },
+      },
     },
   },
 };
