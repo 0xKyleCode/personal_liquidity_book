@@ -449,10 +449,6 @@ contract LBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
     /// @notice Allows the vaults underlying strategy to be swapped out after first deploy
     /// @param _strategy address of the proposed new strategy.
     function setStrategyAddress(address _strategy) external onlyOwner {
-        require(
-            address(strategy) == 0x0000000000000000000000000000000000000000,
-            'Vault: Strategy already Set'
-        );
         strategy = ILBStrategy(_strategy);
         emit UpgradeStrat(_strategy);
     }
