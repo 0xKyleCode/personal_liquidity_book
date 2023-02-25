@@ -1,0 +1,13 @@
+{
+  // Keep all files to have LF ending
+  "files.eol": "\n",
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "solidity.packageDefaultDependenciesContractsDirectory": "",
+  "solidity.packageDefaultDependenciesDirectory": "node_modules",
+  "mochaExplorer.files": "test/**/*.{j,t}s",
+  "solidity.compileUsingRemoteVersion": "v0.8.17+commit.8df45f5f"
+}

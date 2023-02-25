@@ -1,6 +1,7 @@
 import 'dotenv/config';
-import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
+import { HardhatUserConfig } from 'hardhat/config';
+import '@nomicfoundation/hardhat-toolbox';
+import 'hardhat-deploy';
 
 const FORK_FUJI = false;
 const FORK_MAINNET = true;
@@ -14,7 +15,7 @@ const forkingData = FORK_FUJI
     }
   : undefined;
 
-  const account: string = process.env.AVAX_KEY as string
+const account: string = process.env.AVAX_KEY as string;
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -29,6 +30,11 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  namedAccounts: {
+    deployer: 0,
+    user: 0,
+    owner: { 43114: 0, 43113: 0 },
   },
   networks: {
     hardhat: {
@@ -54,13 +60,13 @@ const config: HardhatUserConfig = {
     },
     fuji: {
       url: 'https://api.avax-test.network/ext/bc/C/rpc',
-      gasPrice: 225000000000,
+      gasPrice: 35000000000,
       chainId: 43113,
       accounts: [account],
     },
     mainnet: {
       url: 'https://api.avax.network/ext/bc/C/rpc',
-      gasPrice: 225000000000,
+      gasPrice: 35000000000,
       chainId: 43114,
       accounts: [account],
     },

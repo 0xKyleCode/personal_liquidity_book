@@ -2,12 +2,12 @@
 
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../LB/interfaces/ILBPair.sol";
-import "../interfaces/ILBStrategy.sol";
+import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '../LB/interfaces/ILBPair.sol';
+import '../interfaces/ILBStrategy.sol';
 
-import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
+import '@chainlink/contracts/src/v0.8/AutomationCompatible.sol';
 
 /// @title LBActiveStratManager V2
 /// @author SteakHut Finance
@@ -29,7 +29,7 @@ contract LBActiveStratManagerActiveV2 is
 
     //harvesting params
     uint256 public lastTimestamp;
-    uint256 public period = 86400; //624 hours
+    uint256 public period = 86400; //48 hours
     address public gasCaller;
 
     /// -----------------------------------------------------------
@@ -38,13 +38,11 @@ contract LBActiveStratManagerActiveV2 is
 
     constructor(
         address _strategyAddress,
-        address _gasCaller,
         uint256 _binOffset,
         uint256 _centerOffset
     ) {
         strategyAddress = _strategyAddress;
         binOffset = _binOffset;
-        gasCaller = _gasCaller;
         centerOffset = _centerOffset;
     }
 
@@ -55,28 +53,21 @@ contract LBActiveStratManagerActiveV2 is
     /// @notice Updates binOffset
     /// @param _binOffset new bin offset.
     function setBinOffset(uint256 _binOffset) external onlyOwner {
-        require(_binOffset >= 0, "Manager: Bin offset too small");
+        require(_binOffset >= 0, 'Manager: Bin offset too small');
         binOffset = _binOffset;
     }
 
     /// @notice Updates centerOffset
     /// @param _centerOffset new center offset.
     function setCenterOffset(uint256 _centerOffset) external onlyOwner {
-        require(_centerOffset >= 0, "Manager: Center offset too small");
+        require(_centerOffset >= 0, 'Manager: Center offset too small');
         centerOffset = _centerOffset;
-    }
-
-    /// @notice Updates fee recipient for gas reimbursement
-    /// @param _gasCaller address.
-    function setGasCaller(address _gasCaller) external onlyOwner {
-        require(address(_gasCaller) != address(0), "Manager: Address 0");
-        gasCaller = _gasCaller;
     }
 
     /// @notice Updates the minimum period between harvests
     /// @param _period new minimum period.
     function setPeriod(uint256 _period) external onlyOwner {
-        require(_period > 3600, "Manager: Period too small");
+        require(_period > 3600, 'Manager: Period too small');
         period = _period;
     }
 
@@ -229,7 +220,7 @@ contract LBActiveStratManagerActiveV2 is
             ILBStrategy(strategyAddress).executeRebalance();
         } else {
             //harvest rewards from strategy; can be called anytime
-            _harvest(gasCaller);
+            _harvest();
         }
     }
 
@@ -238,10 +229,9 @@ contract LBActiveStratManagerActiveV2 is
     /// -----------------------------------------------------------
 
     /// @notice executes a harvest of the associated strategy
-    /// @param callFeeRecipient address of strategy that needs a harvest
-    function _harvest(address callFeeRecipient) internal {
+    function _harvest() internal {
         ILBStrategy strategy = ILBStrategy(strategyAddress);
-        strategy.harvest(callFeeRecipient);
+        strategy.harvest();
 
         //update the last harvest timestamp
         lastTimestamp = block.timestamp;

@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface ILBStrategy {
     /// @notice The liquidity parameters, such as:
@@ -80,11 +80,9 @@ interface ILBStrategy {
 
     function tokenY() external view returns (IERC20);
 
-    function harvest() external;
-
-    function harvest(
-        address callFeeRecipient
-    ) external returns (uint256 amountXReceived, uint256 amountYReceived);
+    function harvest()
+        external
+        returns (uint256 amountXReceived, uint256 amountYReceived);
 
     function earn() external;
 

@@ -2,21 +2,19 @@
 
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/utils/math/Math.sol';
 
-import "../LB-periph/LiquidityAmounts.sol";
-import "../LB/interfaces/ILBToken.sol";
+import '../LB-periph/LiquidityAmounts.sol';
+import '../LB/interfaces/ILBToken.sol';
 
-import "../interfaces/IWrappedNative.sol";
-import "../interfaces/ILBStrategy.sol";
+import '../interfaces/IWrappedNative.sol';
+import '../interfaces/ILBStrategy.sol';
 
-/// @title SteakHutLBVaultV1Native
-/// @author SteakHut Finance
-contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
+contract LBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 constant PRECISION = 1e18;
@@ -53,8 +51,7 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
     constructor(
         string memory _name,
         string memory _symbol
-    ) ERC20(_name, _symbol) {
-    }
+    ) ERC20(_name, _symbol) {}
 
     /// -----------------------------------------------------------
     /// AVAX PAIR HELPER FUNCTIONS
@@ -81,11 +78,11 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
         returns (uint256 shares, uint256 amountXActual, uint256 amountYActual)
     {
         if (address(strategy.tokenX()) == address(wavax)) {
-            require(amountX == msg.value, "Native: Amounts not equal");
+            require(amountX == msg.value, 'Native: Amounts not equal');
         }
 
         if (address(strategy.tokenY()) == address(wavax)) {
-            require(amountY == msg.value, "Native: Amounts not equal");
+            require(amountY == msg.value, 'Native: Amounts not equal');
         }
 
         //wrap the required amount of AVAX to msg.sender
@@ -107,7 +104,7 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
     function withdrawAVAXPair(
         uint256 _shares
     ) public nonReentrant returns (uint256 amountX, uint256 amountY) {
-        require(_shares > 0, "Vault: burn 0 not allowed");
+        require(_shares > 0, 'Vault: burn 0 not allowed');
         require(_shares <= balanceOf(msg.sender));
 
         //fetch the total supply of receipt tokens
@@ -195,8 +192,8 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
     /// @param _to The address of the recipient
     /// @param _amount The AVAX amount to send
     function _safeTransferAVAX(address _to, uint256 _amount) private {
-        (bool success, ) = _to.call{value: _amount}("");
-        require(success, "VaultNative: Failed to Send AVAX");
+        (bool success, ) = _to.call{value: _amount}('');
+        require(success, 'VaultNative: Failed to Send AVAX');
     }
 
     /// @notice Helper function to deposit
@@ -217,7 +214,7 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
     receive() external payable {
         require(
             msg.sender == address(wavax),
-            "VaultNative: Sender not WAVAX contract"
+            'VaultNative: Sender not WAVAX contract'
         );
     }
 
@@ -246,7 +243,7 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
         nonReentrant
         returns (uint256 shares, uint256 amountXActual, uint256 amountYActual)
     {
-        require(amountX > 0 || amountY > 0, "Vault: deposit cannot be 0");
+        require(amountX > 0 || amountY > 0, 'Vault: deposit cannot be 0');
 
         //harvest any pending rewards to prevent flash theft of yield
         if (totalSupply() != 0) {
@@ -259,9 +256,9 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
             amountY
         );
 
-        require(shares > 0, "shares");
-        require(amountXActual >= amountXMin, "amount0Min");
-        require(amountYActual >= amountYMin, "amount1Min");
+        require(shares > 0, 'shares');
+        require(amountXActual >= amountXMin, 'amount0Min');
+        require(amountYActual >= amountYMin, 'amount1Min');
 
         //transfer tokens required into the strategy
         if (amountXActual > 0) {
@@ -299,7 +296,7 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
     function withdraw(
         uint256 _shares
     ) public nonReentrant returns (uint256 amountX, uint256 amountY) {
-        require(_shares > 0, "Vault: burn 0 not allowed");
+        require(_shares > 0, 'Vault: burn 0 not allowed');
         require(_shares <= balanceOf(msg.sender));
 
         //fetch the total supply of receipt tokens
@@ -401,7 +398,7 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
                 (amountYDesired * totalX)
             );
 
-            require(cross > 0, "cross");
+            require(cross > 0, 'cross');
 
             // Round up amounts
             amountX = (cross - 1) / totalY + 1;
@@ -454,7 +451,7 @@ contract SteakHutLBVaultV1Native is ERC20, Ownable, ReentrancyGuard {
     function setStrategyAddress(address _strategy) external onlyOwner {
         require(
             address(strategy) == 0x0000000000000000000000000000000000000000,
-            "Vault: Strategy already Set"
+            'Vault: Strategy already Set'
         );
         strategy = ILBStrategy(_strategy);
         emit UpgradeStrat(_strategy);

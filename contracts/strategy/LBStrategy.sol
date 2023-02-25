@@ -2,23 +2,20 @@
 
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
-import "../common/StratManager.sol";
-import "../common/FeeManager.sol";
-import "../interfaces/ILBStrategy.sol";
+import '../common/StratManager.sol';
+import '../interfaces/ILBStrategy.sol';
 
-import "../LB/interfaces/ILBToken.sol";
-import "../LB/interfaces/ILBPair.sol";
-import "../LB/interfaces/ILBRouter.sol";
-import "../LB-periph/LiquidityAmounts.sol";
+import '../LB/interfaces/ILBToken.sol';
+import '../LB/interfaces/ILBPair.sol';
+import '../LB/interfaces/ILBRouter.sol';
+import '../LB-periph/LiquidityAmounts.sol';
 
-/// @title StrategyTJLiquidityBookLB
-/// @author SteakHut Finance
 /// @notice used in conjunction with a vault to manage TraderJoe Liquidity Book Positions
-contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
+contract StrategyTJLiquidityBookLB is StratManager {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.UintSet;
 
@@ -46,7 +43,6 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
     /// Events
     /// -----------------------------------------------------------
     event CollectRewards(
-        address user,
         uint256 lastHarvest,
         uint256 amountXBefore,
         uint256 amountYBefore,
@@ -79,15 +75,13 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
     constructor(
         address _joeRouter,
         address _keeper,
-        address _strategist,
-        address _feeRecipient,
         address _vault,
         ILBStrategy.StrategyParameters memory _strategyParams
-    ) StratManager(_keeper, _strategist, _joeRouter, _vault, _feeRecipient) {
+    ) StratManager(_keeper, _joeRouter, _vault) {
         //require strategy to use < 50 bins due to gas limits
         require(
             _strategyParams.deltaIds.length < 50,
-            "Strategy: Too many bins"
+            'Strategy: Too many bins'
         );
 
         //check parameters are equal in length
@@ -96,7 +90,7 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
                 _strategyParams.distributionX.length &&
                 _strategyParams.distributionX.length ==
                 _strategyParams.distributionY.length,
-            "Strategy: Unbalanced params"
+            'Strategy: Unbalanced params'
         );
 
         //check distributions are equal
@@ -203,7 +197,7 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
         //further liquidity cannot be added until rebalanced
         require(
             checkProposedBinLength(deltaIds, activeId) < 50,
-            "Strategy: Requires Rebalance"
+            'Strategy: Requires Rebalance'
         );
 
         //set the required liquidity parameters
@@ -240,7 +234,7 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
 
         require(
             _activeBins.length() < 50,
-            "Strategy: Too many bins after add; manager check bin slippage and call rebalance"
+            'Strategy: Too many bins after add; manager check bin slippage and call rebalance'
         );
 
         //emit an event
@@ -365,24 +359,23 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
         );
     }
 
-    /// @notice harvests the earnings and takes a performance fee
-    /// @param callFeeRecipient the address which should be credited with the caller rewards as a compensation for gas
-    function _harvest(
-        address callFeeRecipient
-    ) internal returns (uint256 amountXReceived, uint256 amountYReceived) {
+    function _harvest()
+        internal
+        returns (uint256 amountXReceived, uint256 amountYReceived)
+    {
         //collects pending rewards
-        (amountXReceived, amountYReceived) = _collectRewards(callFeeRecipient);
+        (amountXReceived, amountYReceived) = _collectRewards();
 
         lastHarvest = block.timestamp;
     }
 
-    /// @notice collects any availiable rewards from the pair and charges fees
-    /// @param callFeeRecipient the address which should be compensated for gas
+    /// @notice collects any availiable rewards from the pair
     /// @return amountXReceived tokenX amount received
     /// @return amountYReceived tokenY amount received
-    function _collectRewards(
-        address callFeeRecipient
-    ) internal returns (uint256 amountXReceived, uint256 amountYReceived) {
+    function _collectRewards()
+        internal
+        returns (uint256 amountXReceived, uint256 amountYReceived)
+    {
         (uint256 amountXBefore, uint256 amountYBefore) = getTotalAmounts();
 
         uint256[] memory activeBinIds = getActiveBinIds();
@@ -392,61 +385,16 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
             activeBinIds
         );
 
-        if (amountXReceived > 0 || amountYReceived > 0) {
-            _chargeFees(callFeeRecipient, amountXReceived, amountYReceived);
-        }
-
         (uint256 amountX, uint256 amountY) = getTotalAmounts();
 
         //emit event fee's collected
         emit CollectRewards(
-            callFeeRecipient,
             lastHarvest,
             amountXBefore,
             amountYBefore,
             amountX,
             amountY
         );
-    }
-
-    /// @notice charges protocol and strategist fees and distributes
-    /// @param callFeeRecipient the address who will receive the call fee
-    /// @param amountXReceived amount of tokenX to take a fee on
-    /// @param amountYReceived amount of tokenY to take a fee on
-    function _chargeFees(
-        address callFeeRecipient,
-        uint256 amountXReceived,
-        uint256 amountYReceived
-    ) internal {
-        uint256 balX = (amountXReceived * performanceFee) / MAX_FEE;
-        uint256 balY = (amountYReceived * performanceFee) / MAX_FEE;
-
-        if (balX > 0 || balY > 0) {
-            uint256 callFeeAmountX = (balX * callFee) / MAX_FEE;
-            uint256 callFeeAmountY = (balY * callFee) / MAX_FEE;
-
-            uint256 steakHutFeeAmountX = (balX * steakHutFee) / MAX_FEE;
-            uint256 steakHutFeeAmountY = (balY * steakHutFee) / MAX_FEE;
-
-            uint256 strategistFeeX = (balX * STRATEGIST_FEE) / MAX_FEE;
-            uint256 strategistFeeY = (balY * STRATEGIST_FEE) / MAX_FEE;
-
-            if (balX > 0) {
-                //transfer x to reward receivers
-                tokenX.safeTransfer(feeRecipient, steakHutFeeAmountX);
-                tokenX.safeTransfer(callFeeRecipient, callFeeAmountX);
-                tokenX.safeTransfer(strategist, strategistFeeX);
-            }
-            if (balY > 0) {
-                //transfer y to reward receivers
-                tokenY.safeTransfer(feeRecipient, steakHutFeeAmountY);
-                tokenY.safeTransfer(callFeeRecipient, callFeeAmountY);
-                tokenY.safeTransfer(strategist, strategistFeeY);
-            }
-
-            //emit an event
-            emit FeeTransfer(balX, balY);
-        }
     }
 
     /// @notice helper safety check to see if distX and distY add to PRECISION
@@ -458,7 +406,7 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
         for (uint256 i; i < _distribution.length; ++i) {
             total += _distribution[i];
         }
-        require(total == PRECISION, "Strategy: Distribution incorrect");
+        require(total == PRECISION, 'Strategy: Distribution incorrect');
     }
 
     /// -----------------------------------------------------------
@@ -479,7 +427,7 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
         //gas saving check if there is idle funds in the contract
         require(
             balanceX > 1e3 || balanceY > 1e3,
-            "Vault: Insufficient idle funds in strategy"
+            'Vault: Insufficient idle funds in strategy'
         );
 
         //require the amounts to be deposited into the correct bin distributions
@@ -502,11 +450,11 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
     function removeLiquidity(
         uint256 denominator
     ) external returns (uint256 amountX, uint256 amountY) {
-        require(msg.sender == vault, "Strategy: !vault");
+        require(msg.sender == vault, 'Strategy: !vault');
         (amountX, amountY) = _removeLiquidity(denominator);
     }
 
-    /// @notice harvest the rewards from the strategy using tx origin
+    /// @notice harvest the rewards from the strategy
     /// @return amountXReceived amount of tokenX received from harvest
     /// @return amountYReceived amount of tokenY received from harvest
     function harvest()
@@ -514,21 +462,9 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
         virtual
         returns (uint256 amountXReceived, uint256 amountYReceived)
     {
-        (amountXReceived, amountYReceived) = _harvest(tx.origin);
-    }
-
-    /// @notice harvest the rewards from the strategy using custom fee receiver
-    /// @param callFeeRecipient the address to be compensated for gas
-    /// @return amountXReceived amount of tokenX received from harvest
-    /// @return amountYReceived amount of tokenY received from harvest
-    function harvest(
-        address callFeeRecipient
-    )
-        external
-        virtual
-        returns (uint256 amountXReceived, uint256 amountYReceived)
-    {
-        (amountXReceived, amountYReceived) = _harvest(callFeeRecipient);
+        (amountXReceived, amountYReceived) = _harvest();
+        tokenX.safeTransfer(owner(), amountXReceived);
+        tokenY.safeTransfer(owner(), amountYReceived);
     }
 
     /// -----------------------------------------------------------
@@ -612,7 +548,7 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
     function rewardsAvailable(
         uint256[] memory _increasingBinIds
     ) external view returns (uint256 rewardsX, uint256 rewardsY) {
-        require(_increasingBinIds.length > 0, "Strat: Supply valid ids");
+        require(_increasingBinIds.length > 0, 'Strat: Supply valid ids');
         //pending fees requires strictly increasing ids (require sorting off chain)
         (rewardsX, rewardsY) = lbPair.pendingFees(
             address(this),
@@ -639,7 +575,7 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
     /// @notice called as part of strat migration.
     /// Sends all the available funds back to the vault.
     function retireStrat() external {
-        require(msg.sender == vault, "!vault");
+        require(msg.sender == vault, '!vault');
 
         //add currently active tokens supplied as liquidity
         (uint256 totalX, uint256 totalY) = LiquidityAmounts.getAmountsOf(
@@ -688,6 +624,14 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
         _giveAllowances();
     }
 
+    /// @notice allows removal of tokens if necessary
+    function removeTokens(address token) external onlyOwner {
+        uint256 tokenBal = ERC20(token).balanceOf(address(this));
+        if (tokenBal > 0) {
+            ERC20(token).transfer(vault, tokenBal);
+        }
+    }
+
     /// -----------------------------------------------------------
     /// Rebalance functions
     /// -----------------------------------------------------------
@@ -724,14 +668,14 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
         //ensure that we are keeping to the 50 bin limit
         require(
             _deltaIds.length < 50,
-            "Strategy: Bins shall be limited to <50"
+            'Strategy: Bins shall be limited to <50'
         );
 
         //check parameters are equal in length
         require(
             _deltaIds.length == _distributionX.length &&
                 _distributionX.length == _distributionY.length,
-            "Strategy: Unbalanced params"
+            'Strategy: Unbalanced params'
         );
 
         //check the distributions are correct
@@ -742,10 +686,6 @@ contract StrategyTJLiquidityBookLB is StratManager, FeeManager {
         if (binHasYLiquidity(_deltaIds)) {
             _checkDistribution(_distributionY);
         }
-
-        //harvest any pending fees
-        //this may save strategy from performing a swap of tokens
-        _collectRewards(keeper);
 
         (uint256 amountXBefore, uint256 amountYBefore) = getTotalAmounts();
 

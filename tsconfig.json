@@ -5,6 +5,8 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    "lib": ["es6", "dom"]
+  },
+  "include": ["./hardhat.config.ts", "./scripts", "./deploy", "./test"]
 }
